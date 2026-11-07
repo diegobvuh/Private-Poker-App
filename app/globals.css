@@ -233,6 +233,31 @@ button {
   line-height: 1.65;
   font-size: 14px;
 }
+.pending-card {
+  text-align: center;
+}
+.pending-orb {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 22px;
+  border-radius: 50%;
+  color: #0c705d;
+  font-size: 32px;
+  font-weight: 900;
+  background: radial-gradient(circle at 35% 28%, #fff 0 12%, #b8f5dc 14% 48%, #31c4aa 100%);
+  border: 4px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px rgba(12, 112, 93, 0.24), inset 0 -8px 16px rgba(5, 130, 113, 0.14);
+}
+.pending-card .notice {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.request-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
 .auth-form {
   display: grid;
   gap: 10px;
@@ -912,6 +937,9 @@ select option {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-top: 2px solid #d4edf4;
+}
+.request-actions.three-actions {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 .request-actions button {
   height: 36px;

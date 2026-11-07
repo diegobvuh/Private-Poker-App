@@ -12,8 +12,8 @@ export async function requestMagicLink(formData: FormData) {
   if (!origin) redirect("/sign-in?error=configuration");
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
-    options: { shouldCreateUser: false, emailRedirectTo: `${origin}/auth/callback` },
+    options: { shouldCreateUser: true, emailRedirectTo: `${origin}/auth/callback` },
   });
-  if (error) redirect("/sign-in?error=not-invited");
+  if (error) redirect("/sign-in?error=sign-in-failed");
   redirect("/sign-in?sent=1");
 }

@@ -7,18 +7,18 @@ export default async function SignInPage({ searchParams }: Props) {
   const query = await searchParams;
   const sent = query.sent === "1";
   const error = typeof query.error === "string" ? query.error : undefined;
-  const errorMessage = error === "not-invited"
-    ? "This email has not been provisioned yet. The host must add it under Supabase → Poker App → Authentication → Users before a magic link can be sent."
-    : error === "not-a-member"
-      ? "Your sign-in worked, but this account is not attached to the private club yet. Ask the host to finish your membership setup."
-      : "That sign-in link is invalid or the authentication service is not configured yet. Try again or ask the host to check the setup.";
+  const errorMessage = error === "membership-request"
+    ? "Your sign-in worked, but we could not create your approval request. Try the link again or ask the host to check the setup."
+    : error === "sign-in-failed"
+      ? "We could not send a sign-in link. Wait a moment, check the email address, and try again."
+      : "That sign-in link is invalid or has expired. Request a fresh link below.";
   return (
     <main className="auth-shell">
       <Link href="/" className="brand"><span className="brand-mark">HR</span><span>HOUSE RULES</span></Link>
       <section className="auth-card">
-        <span className="kicker">MEMBERS ONLY</span>
-        <h1>Welcome back<br/>to the table.</h1>
-        <p>Use the email address your host invited. We’ll send a short-lived sign-in link—no password to remember.</p>
+        <span className="kicker">PRIVATE CLUB ACCESS</span>
+        <h1>Request your<br/>seat at the table.</h1>
+        <p>Enter any email to create an account or sign back in. New accounts stay locked until the master host approves them.</p>
         {sent ? <div className="notice success" role="status">Check your inbox. Your private link is on its way.</div> : null}
         {error ? <div className="notice error" role="alert">{errorMessage}</div> : null}
         <form action={requestMagicLink} className="auth-form">
@@ -27,7 +27,7 @@ export default async function SignInPage({ searchParams }: Props) {
           <button className="button button-primary" type="submit">Send private link <span aria-hidden>→</span></button>
         </form>
         <div className="auth-divider"><span>PRIVATE HOUSE TABLE</span></div>
-        <p className="auth-footnote">Only invited members can enter. Your host approves every player and every seat.</p>
+        <p className="auth-footnote">Creating an account does not grant club access. The host approves every member and every seat.</p>
       </section>
     </main>
   );

@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 type View = "table" | "ledger" | "practice" | "security";
 type Player = { id: string; name: string; initials: string; seat: number; stack: number; buyIn: number; status: "ACTIVE" | "AWAY" | "OUT" };
 type LedgerRow = { id: string; player: string; type: string; amount: number; at: string; note?: string };
+type PendingMembership = { id: string; email: string; display_name: string; requested_at: string };
 type Modal = "join" | "buyin" | "cashout" | "settings" | "game" | null;
 
 const initialPlayers: Player[] = [
@@ -45,6 +46,8 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
   const [gameName, setGameName] = useState("Friday Night Hold’em");
   const [stakes, setStakes] = useState("$0.50 / $1.00");
   const [practiceGame, setPracticeGame] = useState(practiceGames[0]);
+  const [pendingMemberships, setPendingMemberships] = useState<PendingMembership[]>([]);
+  const [membershipBusy, setMembershipBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -56,6 +59,19 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
     const timer = window.setTimeout(() => setToast(null), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (mode !== "connected" || role !== "owner") return;
+    let cancelled = false;
+    fetch("/api/memberships", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load account requests");
+        return response.json() as Promise<{ memberships: PendingMembership[] }>;
+      })
+      .then((result) => { if (!cancelled) setPendingMemberships(result.memberships); })
+      .catch(() => { if (!cancelled) setToast("Account requests could not be loaded"); });
+    return () => { cancelled = true; };
+  }, [mode, role]);
 
   const totalInPlay = useMemo(() => players.reduce((sum, player) => sum + player.stack, 0), [players]);
   const totalBought = useMemo(() => players.reduce((sum, player) => sum + player.buyIn, 0), [players]);
@@ -86,6 +102,24 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
     setPendingJoin(false);
     setPlayers((current) => [...current, { id: "p5", name: "Andre", initials: "AK", seat: 4, stack: 0, buyIn: 0, status: "AWAY" }]);
     setToast("Andre approved · Seat 4 reserved");
+  }
+
+  async function decideMembership(membership: PendingMembership, action: "approve" | "reject", approvedRole: "player" | "dealer" = "player") {
+    setMembershipBusy(membership.id);
+    try {
+      const response = await fetch("/api/memberships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ membershipId: membership.id, action, role: approvedRole }),
+      });
+      if (!response.ok) throw new Error("Request failed");
+      setPendingMemberships((current) => current.filter((item) => item.id !== membership.id));
+      setToast(action === "approve" ? `${membership.display_name} approved as ${approvedRole}` : `${membership.display_name}'s request declined`);
+    } catch {
+      setToast("That account request could not be updated");
+    } finally {
+      setMembershipBusy(null);
+    }
   }
 
   return (
@@ -160,7 +194,8 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
               </section>
 
               <aside className="right-rail">
-                {pendingJoin ? <section className="panel join-request"><div className="panel-title"><span className="status-light amber" /><strong>JOIN REQUEST</strong><small>NOW</small></div><div className="request-person"><span className="avatar gold">AK</span><div><strong>Andre Kim</strong><span>Scanned the table code</span></div></div><div className="request-actions"><button onClick={approveJoin}>Approve</button><button onClick={() => { setPendingJoin(false); setToast("Join request declined"); }}>Decline</button></div></section> : null}
+                {role === "owner" && pendingMemberships.map((membership) => <section className="panel join-request account-request" key={membership.id}><div className="panel-title"><span className="status-light amber" /><strong>ACCOUNT APPROVAL</strong><small>WAITING</small></div><div className="request-person"><span className="avatar gold">{membership.display_name.slice(0, 2).toUpperCase()}</span><div><strong>{membership.display_name}</strong><span>{membership.email}</span></div></div><div className="request-actions three-actions"><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "approve", "player")}>Player</button><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "approve", "dealer")}>Dealer</button><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "reject")}>Decline</button></div></section>)}
+                {mode === "demo" && pendingJoin ? <section className="panel join-request"><div className="panel-title"><span className="status-light amber" /><strong>JOIN REQUEST</strong><small>NOW</small></div><div className="request-person"><span className="avatar gold">AK</span><div><strong>Andre Kim</strong><span>Scanned the table code</span></div></div><div className="request-actions"><button onClick={approveJoin}>Approve</button><button onClick={() => { setPendingJoin(false); setToast("Join request declined"); }}>Decline</button></div></section> : null}
                 <section className="panel snapshot">
                   <div className="panel-title"><strong>TABLE SNAPSHOT</strong><small>LIVE</small></div>
                   <div className="metric"><span>Total bought in</span><strong>${totalBought.toFixed(2)}</strong></div>
@@ -206,7 +241,7 @@ function PracticeView({ onOpen }: { onOpen: (game: typeof practiceGames[number])
 
 function SecurityView({ mode }: { mode: string }) {
   const controls = [
-    ["Invite-only membership", "Active", "Unknown accounts cannot create themselves through the sign-in flow."],
+    ["Owner-approved membership", "Active", "Anyone can request an account, but only the owner can activate it."],
     ["Row-level security", mode === "connected" ? "Connected" : "Migration ready", "Club membership and role checks are enforced in Postgres."],
     ["Immutable ledger", "Active", "Updates and deletes are blocked; corrections use compensating entries."],
     ["No online cash", "Enforced", "Practice and real-value namespaces cannot be converted."],

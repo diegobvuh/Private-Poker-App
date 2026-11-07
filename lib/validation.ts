@@ -10,6 +10,12 @@ export const gameCommandSchema = z.object({
 
 export const emailSchema = z.email().max(254).transform((value) => value.trim().toLowerCase());
 
+export const membershipDecisionSchema = z.object({
+  membershipId: z.uuid(),
+  action: z.enum(["approve", "reject"]),
+  role: z.enum(["player", "dealer"]).default("player"),
+}).strict();
+
 export const ledgerMutationSchema = z.object({
   accountId: z.uuid(),
   sessionId: z.uuid(),

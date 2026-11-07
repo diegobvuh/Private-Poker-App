@@ -9,7 +9,21 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL("/club", configuredOrigin));
+    if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const suggestedName = String(user.user_metadata?.full_name ?? user.email?.split("@", 1)[0] ?? "Player")
+          .replace(/[^\p{L}\p{N} .'-]/gu, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 48) || "Player";
+        const { error: membershipError } = await supabase.rpc("request_club_membership", {
+          p_display_name: suggestedName,
+        });
+        if (membershipError) return NextResponse.redirect(new URL("/sign-in?error=membership-request", configuredOrigin));
+      }
+      return NextResponse.redirect(new URL("/club", configuredOrigin));
+    }
   }
   return NextResponse.redirect(new URL("/sign-in?error=invalid-link", configuredOrigin));
 }
