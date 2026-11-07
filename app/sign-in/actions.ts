@@ -45,15 +45,3 @@ export async function registerWithPassword(formData: FormData) {
   }
   redirect("/sign-in?registered=1");
 }
-
-export async function requestPasswordReset(formData: FormData) {
-  const email = emailSchema.safeParse(formData.get("email"));
-  const origin = process.env.APP_ORIGIN;
-  if (!email.success || !origin) redirect("/sign-in?mode=forgot&error=invalid-email");
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email.data, {
-    redirectTo: `${origin}/reset-password`,
-  });
-  if (error) redirect("/sign-in?mode=forgot&error=reset-failed");
-  redirect("/sign-in?resetSent=1");
-}

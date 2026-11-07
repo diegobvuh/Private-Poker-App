@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { registerWithPassword, requestPasswordReset, signInWithPassword } from "./actions";
+import { getSupabaseConfig } from "@/lib/supabase/config";
+import { registerWithPassword, signInWithPassword } from "./actions";
+import { PasswordRecoveryForm } from "./password-recovery-form";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -9,6 +11,7 @@ export default async function SignInPage({ searchParams }: Props) {
   const registered = query.registered === "1";
   const resetSent = query.resetSent === "1";
   const error = typeof query.error === "string" ? query.error : undefined;
+  const supabaseConfig = getSupabaseConfig();
   const errorMessage = error === "invalid-credentials"
     ? "The email or password is incorrect. If this account used the old magic-link system, set a password below."
     : error === "invalid-registration"
@@ -52,11 +55,7 @@ export default async function SignInPage({ searchParams }: Props) {
           <button className="button button-primary" type="submit">Create account <span aria-hidden>→</span></button>
         </form> : null}
 
-        {mode === "forgot" ? <form action={requestPasswordReset} className="auth-form">
-          <label htmlFor="reset-email">Email address</label>
-          <input id="reset-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required maxLength={254} />
-          <button className="button button-primary" type="submit">Send password setup <span aria-hidden>→</span></button>
-        </form> : null}
+        {mode === "forgot" ? <PasswordRecoveryForm supabaseUrl={supabaseConfig.url} publishableKey={supabaseConfig.publishableKey} /> : null}
 
         <nav className="auth-switcher" aria-label="Account options">
           {mode !== "signin" ? <Link href="/sign-in">Sign in</Link> : <Link href="/sign-in?mode=forgot">Forgot or need a password?</Link>}
