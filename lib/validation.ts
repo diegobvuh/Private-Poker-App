@@ -10,6 +10,14 @@ export const gameCommandSchema = z.object({
 
 export const emailSchema = z.email().max(254).transform((value) => value.trim().toLowerCase());
 
+export const passwordSchema = z.string().min(10).max(72);
+
+export const registrationSchema = z.object({
+  name: z.string().trim().min(1).max(48),
+  email: emailSchema,
+  password: passwordSchema,
+}).strict();
+
 export const membershipDecisionSchema = z.object({
   membershipId: z.uuid(),
   action: z.enum(["approve", "reject"]),

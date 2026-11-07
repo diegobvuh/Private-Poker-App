@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  const next = requestUrl.searchParams.get("next") === "/reset-password" ? "/reset-password" : "/club";
   const configuredOrigin = process.env.APP_ORIGIN;
   if (!configuredOrigin) return NextResponse.redirect(new URL("/sign-in?error=configuration", requestUrl.origin));
   if (code) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
         });
         if (membershipError) return NextResponse.redirect(new URL("/sign-in?error=membership-request", configuredOrigin));
       }
-      return NextResponse.redirect(new URL("/club", configuredOrigin));
+      return NextResponse.redirect(new URL(next, configuredOrigin));
     }
   }
   return NextResponse.redirect(new URL("/sign-in?error=invalid-link", configuredOrigin));
