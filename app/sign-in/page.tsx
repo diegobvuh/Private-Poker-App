@@ -23,9 +23,9 @@ export default async function SignInPage({ searchParams }: Props) {
       <section className="auth-card">
         <span className="kicker">PRIVATE CLUB ACCESS</span>
         <h1>{mode === "register" ? <>Create your<br/>player account.</> : mode === "forgot" ? <>Set a new<br/>password.</> : <>Welcome back<br/>to the table.</>}</h1>
-        <p>{mode === "register" ? "Create an email-and-password account. It stays locked until the master host approves it." : mode === "forgot" ? "We’ll email a secure password-reset link. This link only changes your password—it is not a sign-in method." : "Sign in with your email and password. No login magic links."}</p>
+        <p>{mode === "register" ? "Create an email-and-password account and enter immediately as a player. Dealer privileges require a separate in-app application." : mode === "forgot" ? "We’ll email a secure password-reset link. This link only changes your password—it is not a sign-in method." : "Sign in with your email and password. No login magic links."}</p>
 
-        {registered ? <div className="notice success" role="status">Account created. Confirm your email, then return here to sign in. Host approval is still required.</div> : null}
+        {registered ? <div className="notice success" role="status">Account created. Sign in to enter as a player.</div> : null}
         {resetSent ? <div className="notice success" role="status">If that account exists, a password setup email is on its way.</div> : null}
         {error ? <div className="notice error" role="alert">{errorMessage}</div> : null}
 
@@ -59,7 +59,7 @@ export default async function SignInPage({ searchParams }: Props) {
           {mode !== "register" ? <Link href="/sign-in?mode=register">Create account</Link> : null}
         </nav>
         <div className="auth-divider"><span>PRIVATE HOUSE TABLE</span></div>
-        <p className="auth-footnote">Creating an account never grants club access. The owner approves every member.</p>
+        <p className="auth-footnote">Every account begins as a player. Dealer privileges are reviewed separately inside Settings.</p>
       </section>
     </main>
   );

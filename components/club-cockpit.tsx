@@ -7,7 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 type View = "table" | "ledger" | "practice" | "security";
 type Player = { id: string; name: string; initials: string; seat: number; stack: number; buyIn: number; status: "ACTIVE" | "AWAY" | "OUT" };
 type LedgerRow = { id: string; player: string; type: string; amount: number; at: string; note?: string };
-type PendingMembership = { id: string; email: string; display_name: string; requested_at: string };
+type DealerApplication = { id: string; status?: "PENDING" | "APPROVED" | "REJECTED"; email?: string; display_name?: string; note?: string | null; applied_at?: string };
 type Modal = "join" | "buyin" | "cashout" | "settings" | "game" | null;
 
 const initialPlayers: Player[] = [
@@ -46,8 +46,9 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
   const [gameName, setGameName] = useState("Friday Night Hold’em");
   const [stakes, setStakes] = useState("$0.50 / $1.00");
   const [practiceGame, setPracticeGame] = useState(practiceGames[0]);
-  const [pendingMemberships, setPendingMemberships] = useState<PendingMembership[]>([]);
-  const [membershipBusy, setMembershipBusy] = useState<string | null>(null);
+  const [dealerApplications, setDealerApplications] = useState<DealerApplication[]>([]);
+  const [myDealerApplication, setMyDealerApplication] = useState<DealerApplication | null>(null);
+  const [dealerBusy, setDealerBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -61,15 +62,19 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
   }, [toast]);
 
   useEffect(() => {
-    if (mode !== "connected" || role !== "owner") return;
+    if (mode !== "connected") return;
     let cancelled = false;
-    fetch("/api/memberships", { cache: "no-store" })
+    fetch("/api/dealer-applications", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Could not load account requests");
-        return response.json() as Promise<{ memberships: PendingMembership[] }>;
+        if (!response.ok) throw new Error("Could not load dealer applications");
+        return response.json() as Promise<{ applications?: DealerApplication[]; application?: DealerApplication | null }>;
       })
-      .then((result) => { if (!cancelled) setPendingMemberships(result.memberships); })
-      .catch(() => { if (!cancelled) setToast("Account requests could not be loaded"); });
+      .then((result) => {
+        if (cancelled) return;
+        setDealerApplications(result.applications ?? []);
+        setMyDealerApplication(result.application ?? null);
+      })
+      .catch(() => { if (!cancelled) setToast("Dealer applications could not be loaded"); });
     return () => { cancelled = true; };
   }, [mode, role]);
 
@@ -104,21 +109,23 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
     setToast("Andre approved · Seat 4 reserved");
   }
 
-  async function decideMembership(membership: PendingMembership, action: "approve" | "reject", approvedRole: "player" | "dealer" = "player") {
-    setMembershipBusy(membership.id);
+  async function submitDealerAction(action: "apply" | "approve" | "reject", applicationId?: string, note = "") {
+    setDealerBusy(applicationId ?? "apply");
     try {
-      const response = await fetch("/api/memberships", {
+      const response = await fetch("/api/dealer-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ membershipId: membership.id, action, role: approvedRole }),
+        body: JSON.stringify(action === "apply" ? { action, note } : { action, applicationId }),
       });
       if (!response.ok) throw new Error("Request failed");
-      setPendingMemberships((current) => current.filter((item) => item.id !== membership.id));
-      setToast(action === "approve" ? `${membership.display_name} approved as ${approvedRole}` : `${membership.display_name}'s request declined`);
+      const result = await response.json() as { application: DealerApplication };
+      if (action === "apply") setMyDealerApplication(result.application);
+      else setDealerApplications((current) => current.filter((item) => item.id !== applicationId));
+      setToast(action === "apply" ? "Dealer application sent" : action === "approve" ? "Dealer access approved" : "Dealer application declined");
     } catch {
-      setToast("That account request could not be updated");
+      setToast("That dealer request could not be updated");
     } finally {
-      setMembershipBusy(null);
+      setDealerBusy(null);
     }
   }
 
@@ -194,7 +201,6 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
               </section>
 
               <aside className="right-rail">
-                {role === "owner" && pendingMemberships.map((membership) => <section className="panel join-request account-request" key={membership.id}><div className="panel-title"><span className="status-light amber" /><strong>ACCOUNT APPROVAL</strong><small>WAITING</small></div><div className="request-person"><span className="avatar gold">{membership.display_name.slice(0, 2).toUpperCase()}</span><div><strong>{membership.display_name}</strong><span>{membership.email}</span></div></div><div className="request-actions three-actions"><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "approve", "player")}>Player</button><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "approve", "dealer")}>Dealer</button><button disabled={membershipBusy === membership.id} onClick={() => decideMembership(membership, "reject")}>Decline</button></div></section>)}
                 {mode === "demo" && pendingJoin ? <section className="panel join-request"><div className="panel-title"><span className="status-light amber" /><strong>JOIN REQUEST</strong><small>NOW</small></div><div className="request-person"><span className="avatar gold">AK</span><div><strong>Andre Kim</strong><span>Scanned the table code</span></div></div><div className="request-actions"><button onClick={approveJoin}>Approve</button><button onClick={() => { setPendingJoin(false); setToast("Join request declined"); }}>Decline</button></div></section> : null}
                 <section className="panel snapshot">
                   <div className="panel-title"><strong>TABLE SNAPSHOT</strong><small>LIVE</small></div>
@@ -222,7 +228,7 @@ export function ClubCockpit({ mode, currentUser = "Diego", role = "owner" }: { m
           <button className="modal-close" onClick={() => setModal(null)} aria-label="Close dialog">×</button>
           {modal === "join" ? <JoinModal value={qrValue} pending={pendingJoin} /> : null}
           {modal === "buyin" || modal === "cashout" ? <MoneyModal kind={modal} players={players} selected={selectedPlayer} amount={amount} setSelected={setSelectedPlayer} setAmount={setAmount} onSave={() => addLedger(modal === "buyin" ? (players.find((p) => p.id === selectedPlayer)?.buyIn ? "Rebuy" : "Buy-in") : "Cash-out", Number(amount))} /> : null}
-          {modal === "settings" ? <SettingsModal gameName={gameName} stakes={stakes} setGameName={setGameName} setStakes={setStakes} onSave={() => { setModal(null); setToast("Table settings updated"); }} /> : null}
+          {modal === "settings" ? <SettingsModal role={role} gameName={gameName} stakes={stakes} setGameName={setGameName} setStakes={setStakes} applications={dealerApplications} myApplication={myDealerApplication} busy={dealerBusy} onDealerAction={submitDealerAction} onSave={() => { setModal(null); setToast("Table settings updated"); }} /> : null}
           {modal === "game" ? <PracticeModal game={practiceGame} onPlay={() => setToast(`${practiceGame.name} practice table created`)} /> : null}
         </section>
       </div> : null}
@@ -241,7 +247,7 @@ function PracticeView({ onOpen }: { onOpen: (game: typeof practiceGames[number])
 
 function SecurityView({ mode }: { mode: string }) {
   const controls = [
-    ["Owner-approved membership", "Active", "Anyone can request an account, but only the owner can activate it."],
+    ["Dealer-approved privileges", "Active", "Every signup starts as a player. Existing dealers approve all dealer promotions."],
     ["Row-level security", mode === "connected" ? "Connected" : "Migration ready", "Club membership and role checks are enforced in Postgres."],
     ["Immutable ledger", "Active", "Updates and deletes are blocked; corrections use compensating entries."],
     ["No online cash", "Enforced", "Practice and real-value namespaces cannot be converted."],
@@ -258,8 +264,13 @@ function MoneyModal({ kind, players, selected, amount, setSelected, setAmount, o
   return <><span className="kicker">{kind === "buyin" ? "APPEND LEDGER ENTRY" : "WHOLE-CENT SETTLEMENT"}</span><h2 id="modal-title">{kind === "buyin" ? "Buy-in or rebuy" : "Cash out player"}</h2><p>{kind === "buyin" ? "Physical money stays with the dealer. This records the table value only." : "The player’s fractional remainder stays on their club account."}</p><div className="field"><label htmlFor="player">Player</label><select id="player" value={selected} onChange={(e) => setSelected(e.target.value)}>{players.map((player) => <option value={player.id} key={player.id}>{player.name} · ${player.stack.toFixed(2)}</option>)}</select></div><div className="field"><label htmlFor="amount">Amount in dollars</label><div className="money-input"><span>$</span><input id="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></div></div><div className="quick-amounts">{[20, 50, 100, 200].map((value) => <button key={value} onClick={() => setAmount(String(value))}>${value}</button>)}</div><button className="button button-primary full" onClick={onSave}>Record {kind === "buyin" ? "entry" : "cash-out"}</button></>;
 }
 
-function SettingsModal({ gameName, stakes, setGameName, setStakes, onSave }: { gameName: string; stakes: string; setGameName: (value: string) => void; setStakes: (value: string) => void; onSave: () => void }) {
-  return <><span className="kicker">DEALER CONTROLS</span><h2 id="modal-title">Table settings</h2><p>Changes apply to the current household event only.</p><div className="field"><label htmlFor="game-name">Game name</label><input id="game-name" value={gameName} onChange={(e) => setGameName(e.target.value.slice(0, 48))} /></div><div className="field"><label htmlFor="stakes">Blinds</label><select id="stakes" value={stakes} onChange={(e) => setStakes(e.target.value)}><option>$0.25 / $0.50</option><option>$0.50 / $1.00</option><option>$1.00 / $2.00</option></select></div><button className="button button-primary full" onClick={onSave}>Save settings</button></>;
+function SettingsModal({ role, gameName, stakes, setGameName, setStakes, applications, myApplication, busy, onDealerAction, onSave }: { role: string; gameName: string; stakes: string; setGameName: (value: string) => void; setStakes: (value: string) => void; applications: DealerApplication[]; myApplication: DealerApplication | null; busy: string | null; onDealerAction: (action: "apply" | "approve" | "reject", applicationId?: string, note?: string) => Promise<void>; onSave: () => void }) {
+  const [dealerNote, setDealerNote] = useState("");
+  const canReview = role === "owner" || role === "dealer";
+  if (!canReview) {
+    return <><span className="kicker">ACCOUNT SETTINGS</span><h2 id="modal-title">Player access</h2><p>Every new account starts as a player. Dealer access requires approval from an existing dealer.</p><div className="role-card"><span>CURRENT ROLE</span><strong>PLAYER</strong></div>{myApplication?.status === "PENDING" ? <div className="notice success" role="status">Your dealer application is waiting for review.</div> : <><div className="field"><label htmlFor="dealer-note">Why do you want dealer access? <small>Optional</small></label><textarea id="dealer-note" value={dealerNote} maxLength={240} onChange={(event) => setDealerNote(event.target.value)} placeholder="I’ll help host and settle game night…" /></div><button className="button button-primary full" disabled={busy === "apply"} onClick={() => onDealerAction("apply", undefined, dealerNote)}>Apply to become a dealer</button>{myApplication?.status === "REJECTED" ? <p className="field-hint">Your previous application was declined. You may submit a new one.</p> : null}</>}</>;
+  }
+  return <><span className="kicker">DEALER CONTROLS</span><h2 id="modal-title">Table settings</h2><p>Only existing dealers can approve another dealer.</p>{applications.length ? <section className="dealer-application-list"><strong>PENDING DEALER APPLICATIONS</strong>{applications.map((application) => <article key={application.id}><div><b>{application.display_name}</b><span>{application.email}</span>{application.note ? <p>{application.note}</p> : null}</div><div><button disabled={busy === application.id} onClick={() => onDealerAction("approve", application.id)}>Approve</button><button disabled={busy === application.id} onClick={() => onDealerAction("reject", application.id)}>Decline</button></div></article>)}</section> : <div className="notice success">No dealer applications are waiting.</div>}<div className="field"><label htmlFor="game-name">Game name</label><input id="game-name" value={gameName} onChange={(e) => setGameName(e.target.value.slice(0, 48))} /></div><div className="field"><label htmlFor="stakes">Blinds</label><select id="stakes" value={stakes} onChange={(e) => setStakes(e.target.value)}><option>$0.25 / $0.50</option><option>$0.50 / $1.00</option><option>$1.00 / $2.00</option></select></div><button className="button button-primary full" onClick={onSave}>Save settings</button></>;
 }
 
 function PracticeModal({ game, onPlay }: { game: typeof practiceGames[number]; onPlay: () => void }) {

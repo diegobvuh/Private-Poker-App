@@ -24,6 +24,11 @@ export const membershipDecisionSchema = z.object({
   role: z.enum(["player", "dealer"]).default("player"),
 }).strict();
 
+export const dealerApplicationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("apply"), note: z.string().trim().max(240).default("") }).strict(),
+  z.object({ action: z.enum(["approve", "reject"]), applicationId: z.uuid() }).strict(),
+]);
+
 export const ledgerMutationSchema = z.object({
   accountId: z.uuid(),
   sessionId: z.uuid(),

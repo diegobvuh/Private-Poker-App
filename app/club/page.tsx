@@ -19,11 +19,11 @@ export default async function ClubPage() {
       <main className="auth-shell pending-shell">
         <section className="auth-card pending-card">
           <span className="pending-orb" aria-hidden>✓</span>
-          <span className="kicker">REQUEST RECEIVED</span>
-          <h1>You’re on the<br/>waiting list.</h1>
-          <p>Your account is ready, but Diego—the master host—must approve it before you can enter the club.</p>
+          <span className="kicker">ACCOUNT UNAVAILABLE</span>
+          <h1>Your club access<br/>is paused.</h1>
+          <p>This account is suspended. Ask the host if you believe this is a mistake.</p>
           <div className="notice success" role="status">Signed in as {user.email}</div>
-          <p className="auth-footnote">You can safely close this page. Return with the same email after the host approves you.</p>
+          <p className="auth-footnote">New accounts normally enter immediately as players.</p>
         </section>
       </main>
     );
