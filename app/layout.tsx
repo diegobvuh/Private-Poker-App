@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   applicationName: "House Rules",
 };
 
-export const viewport: Viewport = { themeColor: "#07110e", colorScheme: "dark" };
+export const viewport: Viewport = { themeColor: "#8fe2ff", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
