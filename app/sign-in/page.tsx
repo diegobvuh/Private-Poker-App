@@ -15,6 +15,10 @@ export default async function SignInPage({ searchParams }: Props) {
       ? "Enter a name, a valid email, and a password of at least 10 characters."
       : error === "membership-request"
         ? "Your account is signed in, but its approval request could not be created. Ask the host to check the setup."
+        : error === "expired-recovery"
+          ? "That password-reset link is invalid or expired. Request a fresh one below."
+          : error === "reset-failed"
+            ? "The password-reset email could not be sent. Wait a minute and try again."
         : "That request could not be completed. Check the information and try again.";
 
   return (

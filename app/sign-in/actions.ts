@@ -51,8 +51,9 @@ export async function requestPasswordReset(formData: FormData) {
   const origin = process.env.APP_ORIGIN;
   if (!email.success || !origin) redirect("/sign-in?mode=forgot&error=invalid-email");
   const supabase = await createServerSupabaseClient();
-  await supabase.auth.resetPasswordForEmail(email.data, {
-    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  const { error } = await supabase.auth.resetPasswordForEmail(email.data, {
+    redirectTo: `${origin}/reset-password`,
   });
+  if (error) redirect("/sign-in?mode=forgot&error=reset-failed");
   redirect("/sign-in?resetSent=1");
 }
