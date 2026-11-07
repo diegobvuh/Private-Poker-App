@@ -17,7 +17,7 @@ export async function refreshSession(request: NextRequest, requestHeaders = new 
   });
 
   const { data: { user } } = await supabase.auth.getUser();
-  const isProtected = request.nextUrl.pathname.startsWith("/club");
+  const isProtected = request.nextUrl.pathname.startsWith("/club") || request.nextUrl.pathname.startsWith("/demo");
   if (isProtected && !user) {
     const urlToRedirect = request.nextUrl.clone();
     urlToRedirect.pathname = "/sign-in";

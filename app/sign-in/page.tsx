@@ -21,8 +21,8 @@ export default async function SignInPage({ searchParams }: Props) {
           <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required maxLength={254} />
           <button className="button button-primary" type="submit">Send private link <span aria-hidden>→</span></button>
         </form>
-        <div className="auth-divider"><span>or preview locally</span></div>
-        <Link className="button button-ghost full" href="/demo">Open dealer cockpit demo</Link>
+        <div className="auth-divider"><span>PRIVATE HOUSE TABLE</span></div>
+        <p className="auth-footnote">Only invited members can enter. Your host approves every player and every seat.</p>
       </section>
     </main>
   );
